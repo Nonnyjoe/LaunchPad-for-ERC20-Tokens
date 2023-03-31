@@ -13,6 +13,8 @@ interface IUSDT {
         address _spender
     ) external returns (uint256 remaining);
 
+    function decimals() external view returns (uint8);
+
     function transferFrom(
         address from,
         address to,
