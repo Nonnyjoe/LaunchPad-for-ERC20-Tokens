@@ -3,14 +3,14 @@ pragma solidity ^0.8.13;
 
 import "forge-std/Test.sol";
 import "../lib/forge-std/src/Test.sol";
-import "../src/LaunchPad.sol";
+import "../src/InfinityDaoLaunchPad.sol";
 import "../src/StarDaoToken.sol";
 // import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "../lib/openzeppelin-contracts/contracts/utils/math/SafeMath.sol";
 
 contract LaunchPadFunctionalityTest is Test {
     using SafeMath for uint256;
-    LaunchPad public launchPad;
+    InfinityDaoLaunchPad public infinityDaoLaunchPad;
     StarDaoToken public starDaoToken;
     uint tokken3;
     uint tokken4;
@@ -24,7 +24,7 @@ contract LaunchPadFunctionalityTest is Test {
 
     function setUp() public {
         vm.startPrank(Admin);
-        launchPad = new LaunchPad();
+        infinityDaoLaunchPad = new InfinityDaoLaunchPad();
         starDaoToken = new StarDaoToken();
         vm.stopPrank();
     }
@@ -32,7 +32,7 @@ contract LaunchPadFunctionalityTest is Test {
     function testCreateLaunchPad() public {
         prepareToken();
         vm.startPrank(padCreator);
-        launchPad.createLaunchPad(
+        infinityDaoLaunchPad.createLaunchPad(
             uint(101),
             address(starDaoToken),
             (100000 * 10e18),
@@ -72,33 +72,33 @@ contract LaunchPadFunctionalityTest is Test {
 
     function testDisplayContributors() public {
         testParticipateWithEth();
-        launchPad.displayNoOfContributors(101);
+        infinityDaoLaunchPad.displayNoOfContributors(101);
     }
 
     function testViewEthRaised() public {
         testParticipateWithEth();
-        launchPad.viewEthRaised(101);
+        infinityDaoLaunchPad.viewEthRaised(101);
     }
 
     function testTotalLaunchPads() public {
         testParticipateWithEth();
-        launchPad.totalLaunchPads();
+        infinityDaoLaunchPad.totalLaunchPads();
     }
 
     function testViewFees() public {
         testwithdrawPadToken();
         vm.prank(Admin);
-        launchPad.viewFees();
+        infinityDaoLaunchPad.viewFees();
     }
 
     function testdisplayAllLaunchPads() public {
         testParticipateWithEth();
-        launchPad.displayAllLaunchPads();
+        infinityDaoLaunchPad.displayAllLaunchPads();
     }
 
     function SwapBackBeforeWithdrawal(address _participant, uint _id) internal {
         vm.prank(_participant);
-        launchPad.SwapPadTokenToEthB4Withdrawal(_id);
+        infinityDaoLaunchPad.SwapPadTokenToEthB4Withdrawal(_id);
     }
 
     function SwapBackAfterWithdrawal(
@@ -107,8 +107,8 @@ contract LaunchPadFunctionalityTest is Test {
         uint _ammount
     ) internal {
         vm.startPrank(_participant);
-        starDaoToken.approve(address(launchPad), _ammount);
-        launchPad.SwapPadTokenToEthAfterWithdrawal(_id, _ammount);
+        starDaoToken.approve(address(infinityDaoLaunchPad), _ammount);
+        infinityDaoLaunchPad.SwapPadTokenToEthAfterWithdrawal(_id, _ammount);
         vm.stopPrank();
     }
 
@@ -117,7 +117,7 @@ contract LaunchPadFunctionalityTest is Test {
         uint _id
     ) internal returns (uint tokkens) {
         vm.prank(_participant);
-        tokkens = launchPad.withdrawPadToken(_id);
+        tokkens = infinityDaoLaunchPad.withdrawPadToken(_id);
     }
 
     function participate(
@@ -127,14 +127,14 @@ contract LaunchPadFunctionalityTest is Test {
     ) internal {
         vm.deal(_participator, 2 ether);
         vm.prank(_participator);
-        launchPad.participateWithEth{value: _ammount}(_id);
+        infinityDaoLaunchPad.participateWithEth{value: _ammount}(_id);
     }
 
     function prepareToken() internal {
         vm.prank(Admin);
         starDaoToken.mint(padCreator, (100000 * 10e18));
         vm.prank(padCreator);
-        starDaoToken.approve(address(launchPad), (100000 * 10e18));
+        starDaoToken.approve(address(infinityDaoLaunchPad), (100000 * 10e18));
     }
 
     function mkaddr(string memory name) public returns (address) {

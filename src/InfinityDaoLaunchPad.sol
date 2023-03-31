@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import "./IUSDT.sol";
 import "../lib/openzeppelin-contracts/contracts/utils/math/SafeMath.sol";
 
-contract LaunchPad {
+contract InfinityDaoLaunchPad {
     using SafeMath for uint256;
     address admin;
     uint totalFees;
@@ -283,7 +283,7 @@ contract LaunchPad {
         if (block.timestamp < endTime) revert("PAD STILL IN PROGRESS");
         uint totalEth = padDetails[_padId].PEthSupply;
         uint Fee = ((5 * totalEth) / 100);
-        uint pendingDebit = (padDetails[_padId].EthWithdrawn) + (Fee * 10e18);
+        uint pendingDebit = (padDetails[_padId].EthWithdrawn) + Fee;
         require(
             _ammount <= (totalEth - pendingDebit),
             "INSUFFICIENT ETH IN PAD TO COVER REQUEST"
