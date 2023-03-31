@@ -14,6 +14,7 @@ contract InfinityDaoLaunchPad {
     struct padData {
         bool isActive;
         bool paidFee;
+        address padModerator;
         address padToken;
         uint tokenDecimal;
         uint PTSupply;
@@ -22,8 +23,13 @@ contract InfinityDaoLaunchPad {
         uint PEthSupply;
         uint PadExpiry;
         uint EthWithdrawn;
-        address padModerator;
+        bool isPresaleClosed;
+        uint preSaleTotalSupply;
+        uint preSaleEthRaised;
+        uint percentageIncrease;
+        uint tokenRate;
         address[] participators;
+        address[] presaleParticipants;
     }
 
     struct userData {
@@ -47,6 +53,8 @@ contract InfinityDaoLaunchPad {
     event WithdrawLaunchPadToken(uint _padId, address _user, uint _ammount);
     event EthWithdrawn(uint _padId, address _user, uint _ammount);
     event ExpierydateExtended(uint _padId, uint extradays);
+    event PresaleLiquidityEmptied(uint _padId, address initiator, uint ammount);
+    event newPresale(uint _padId, address user, uint tokenReceived);
     event swappedAfrerWithdrawal(
         uint _padId,
         address _user,
@@ -84,13 +92,31 @@ contract InfinityDaoLaunchPad {
         uint _padId,
         address _padToken,
         uint256 _PTSupply,
-        uint256 _PadExpiry
+        uint256 _preSaleTokenSupply,
+        uint256 _PadExpiry,
+        uint _percentagePresalePriceIncrease
     ) public _isValidId(_padId) returns (bool success) {
         require(_padToken != address(0));
         require(_PTSupply > 0);
         require(_PadExpiry > 0);
-        success = transferFrom_(IUSDT(_padToken), _PTSupply, msg.sender);
-        recordPadCreation(_padToken, _PTSupply, msg.sender, _PadExpiry, _padId);
+        if (_preSaleTokenSupply > 0) {
+            require(_percentagePresalePriceIncrease > 0, "PERCENTAGE TOO LOW");
+            require(
+                _percentagePresalePriceIncrease <= 100,
+                "PERCENTAGE TOO HIGH"
+            );
+        }
+        uint totalToken = _PTSupply + _preSaleTokenSupply;
+        success = transferFrom_(IUSDT(_padToken), totalToken, msg.sender);
+        recordPadCreation(
+            _padToken,
+            _PTSupply,
+            msg.sender,
+            _PadExpiry,
+            _padId,
+            _preSaleTokenSupply,
+            _percentagePresalePriceIncrease
+        );
     }
 
     function recordPadCreation(
@@ -98,7 +124,9 @@ contract InfinityDaoLaunchPad {
         uint _PTSupply,
         address _moderator,
         uint _PadExpiry,
-        uint _padId
+        uint _padId,
+        uint _preSaleTokenSupply,
+        uint _percentageIncrease
     ) internal {
         isValidId[_padId] = true;
         padDetails[_padId].isActive = true;
@@ -112,6 +140,10 @@ contract InfinityDaoLaunchPad {
             block.timestamp);
         padDetails[_padId].padModerator = _moderator;
         padDetails[_padId].EthWithdrawn = 0;
+        padDetails[_padId].tokenRate = 0;
+        padDetails[_padId].preSaleTotalSupply = _preSaleTokenSupply;
+        padDetails[_padId].preSaleEthRaised = 0;
+        padDetails[_padId].percentageIncrease = _percentageIncrease;
         padDetails[_padId].tokenDecimal = IUSDT(_padToken).decimals();
         launchPads.push(_padId);
         emit launchpadCreated(
@@ -125,13 +157,13 @@ contract InfinityDaoLaunchPad {
     function participateWithEth(uint _padId) public payable {
         require(isValidId[_padId] == true, "INVALID PAD ID");
         uint endTime = padDetails[_padId].PadExpiry;
-        if (block.timestamp > endTime) revert("PAD ENDED");
+        if (block.timestamp > endTime) revert("PAD ENDED, CHECK PRESALE");
         require(msg.value > 0, "INVALID TRANSFER AMOUNT");
         padDetails[_padId].participators.push(msg.sender);
         padDetails[_padId].PEthSupply += msg.value;
 
         userDetails[_padId][msg.sender].claimedOfferedTokens = false;
-        userDetails[_padId][msg.sender].userEthOffer = msg.value;
+        userDetails[_padId][msg.sender].userEthOffer += msg.value;
         userDetails[_padId][msg.sender].PTOffered = 0;
         emit DepositedToLaunchPad(_padId, msg.sender, msg.value);
     }
@@ -171,6 +203,9 @@ contract InfinityDaoLaunchPad {
             totalFees += Fee;
             padDetails[_padId].paidFee = true;
         }
+        if (padDetails[_padId].tokenRate == 0) {
+            calculateTokenPrice(_padId);
+        }
     }
 
     function calculateReward(uint _padId) internal view returns (uint reward) {
@@ -178,6 +213,14 @@ contract InfinityDaoLaunchPad {
         uint userContribution = userDetails[_padId][msg.sender].userEthOffer;
         uint totalPTokens = padDetails[_padId].PTSupply;
         reward = ((userContribution.mul(totalPTokens)).div(totalEth));
+    }
+
+    function calculateTokenPrice(uint _padId) internal {
+        uint totalEth = padDetails[_padId].PEthSupply;
+        uint totalPTokens = padDetails[_padId].PTSupply;
+        uint determiner = 1 ether;
+        uint price = ((totalPTokens * determiner) / totalEth);
+        padDetails[_padId].tokenRate = price;
     }
 
     function SwapPadTokenToEthAfterWithdrawal(
@@ -296,6 +339,7 @@ contract InfinityDaoLaunchPad {
         padDetails[_padId].EthWithdrawn += _ammount;
         payable(msg.sender).transfer(_ammount);
         emit EthWithdrawn(_padId, msg.sender, _ammount);
+        ChangePadState(_padId);
     }
 
     function viewEthRaised(uint _padId) public view returns (uint actualBal) {
@@ -356,5 +400,72 @@ contract InfinityDaoLaunchPad {
         returns (uint[] memory LaunchPads)
     {
         LaunchPads = launchPads;
+    }
+
+    function participateInPresale(uint _padId) public payable {
+        if (padDetails[_padId].isPresaleClosed == true)
+            revert("PRESALE SESSION CLOSED");
+        require(isValidId[_padId] == true, "INVALID PAD ID");
+        uint presaleAmount = padDetails[_padId].preSaleTotalSupply;
+        if (presaleAmount == 0) revert("TOKEN DOES NOT SUPPORT PRESALE");
+        uint endTime = padDetails[_padId].PadExpiry;
+        if (block.timestamp < endTime) revert("PAD STILL IN PROGRESS");
+        ChangePadState(_padId);
+        uint tokenReceived = calculateObtainedToken(_padId, msg.value);
+        if (padDetails[_padId].preSaleTotalSupply < tokenReceived)
+            revert("INSUFFFICIENT LIQUIDITY");
+        padDetails[_padId].preSaleEthRaised += msg.value;
+        padDetails[_padId].preSaleTotalSupply -= tokenReceived;
+        padDetails[_padId].presaleParticipants.push(msg.sender);
+        emit newPresale(_padId, msg.sender, tokenReceived);
+    }
+
+    function displayRateFromLaunchPad(
+        uint _padId
+    ) public view returns (uint rate) {
+        rate = padDetails[_padId].tokenRate;
+    }
+
+    function withdrawExcessPresaleTokken(
+        uint _padId
+    ) public OnlyModerator(_padId) returns (bool status) {
+        require(
+            padDetails[_padId].isPresaleClosed == true,
+            "PRESALE NOT ENDED YET"
+        );
+        address pToken = padDetails[_padId].padToken;
+        uint presaleTokenBal = padDetails[_padId].preSaleTotalSupply;
+        status = transfer_(IUSDT(pToken), presaleTokenBal, msg.sender);
+        emit PresaleLiquidityEmptied(_padId, msg.sender, presaleTokenBal);
+    }
+
+    function endPresale(uint _padId) public OnlyModerator(_padId) {
+        require(
+            padDetails[_padId].isPresaleClosed != true,
+            "PRESALE ALREADY ENDED"
+        );
+        padDetails[_padId].isPresaleClosed = true;
+    }
+
+    function viewEthRaisedFromPresale(
+        uint _padId
+    ) public view returns (uint Eth) {
+        Eth = padDetails[_padId].preSaleEthRaised;
+    }
+
+    function viewPresaleTokenBalance(
+        uint _padId
+    ) public view returns (uint tokenBalance) {
+        tokenBalance = padDetails[_padId].preSaleTotalSupply;
+    }
+
+    function calculateObtainedToken(
+        uint _padId,
+        uint value
+    ) internal view returns (uint ammount) {
+        uint rate = padDetails[_padId].tokenRate;
+        uint percent = padDetails[_padId].percentageIncrease;
+        uint determiner = ((percent * 1 ether) / 100) + 1 ether;
+        ammount = (value * rate) / determiner;
     }
 }

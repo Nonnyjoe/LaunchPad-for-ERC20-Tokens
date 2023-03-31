@@ -36,7 +36,9 @@ contract LaunchPadFunctionalityTest is Test {
             uint(101),
             address(starDaoToken),
             (100000 * 10e18),
-            5
+            (50000 * 10e18),
+            5,
+            10
         );
         vm.stopPrank();
     }
@@ -44,7 +46,7 @@ contract LaunchPadFunctionalityTest is Test {
     function testParticipateWithEth() public {
         testCreateLaunchPad();
         participate(participator1, 101, 0.2 ether);
-        participate(participator2, 101, 0.4 ether);
+        participate(participator2, 101, 0.5 ether);
         participate(participator3, 101, 0.6 ether);
         participate(participator4, 101, 0.8 ether);
         participate(participator5, 101, 1 ether);
@@ -96,6 +98,45 @@ contract LaunchPadFunctionalityTest is Test {
         infinityDaoLaunchPad.displayAllLaunchPads();
     }
 
+    function testparticipateInPresale() public {
+        testwithdrawPadToken();
+        vm.deal(address(0x01), 0.5 ether);
+        runPreSale(address(0x01), 101, 0.5 ether);
+    }
+
+    function testEndPresale() public {
+        testparticipateInPresale();
+        vm.startPrank(padCreator);
+        infinityDaoLaunchPad.endPresale(101);
+        uint rate = infinityDaoLaunchPad.displayRateFromLaunchPad(101);
+        uint EthRaised = infinityDaoLaunchPad.viewEthRaisedFromPresale(101);
+        uint TokenBal = infinityDaoLaunchPad.viewPresaleTokenBalance(101);
+        console.log(rate);
+        console.log(EthRaised);
+        console.log(TokenBal);
+        vm.stopPrank();
+    }
+
+    function testWithdrawExcess() public {
+        testEndPresale();
+        vm.startPrank(padCreator);
+        infinityDaoLaunchPad.withdrawExcessPresaleTokken(101);
+        vm.stopPrank();
+    }
+
+    //  322580 645161290322580645
+    //   500000000000000000
+    //   353372434017595307917889
+
+    function runPreSale(
+        address _participant,
+        uint _id,
+        uint _ammount
+    ) internal {
+        vm.prank(_participant);
+        infinityDaoLaunchPad.participateInPresale{value: _ammount}(_id);
+    }
+
     function SwapBackBeforeWithdrawal(address _participant, uint _id) internal {
         vm.prank(_participant);
         infinityDaoLaunchPad.SwapPadTokenToEthB4Withdrawal(_id);
@@ -132,9 +173,9 @@ contract LaunchPadFunctionalityTest is Test {
 
     function prepareToken() internal {
         vm.prank(Admin);
-        starDaoToken.mint(padCreator, (100000 * 10e18));
+        starDaoToken.mint(padCreator, (10000000 * 10e18));
         vm.prank(padCreator);
-        starDaoToken.approve(address(infinityDaoLaunchPad), (100000 * 10e18));
+        starDaoToken.approve(address(infinityDaoLaunchPad), (10000000 * 10e18));
     }
 
     function mkaddr(string memory name) public returns (address) {

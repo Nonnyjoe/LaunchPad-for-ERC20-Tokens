@@ -15,6 +15,10 @@ contract CounterTest is Test {
     function testIncrement() public {
         counter.increment();
         assertEq(counter.number(), 1);
+        uint a = 200000000000000000000000;
+        uint b = 2.5 ether;
+        uint c = 1 ether;
+        console.log((a * c) / b);
     }
 
     function testSetNumber(uint256 x) public {
