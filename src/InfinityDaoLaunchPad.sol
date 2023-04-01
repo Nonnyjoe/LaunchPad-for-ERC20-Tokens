@@ -334,8 +334,8 @@ contract InfinityDaoLaunchPad {
         if (padDetails[_padId].paidFee == false) {
             totalFees += Fee;
             padDetails[_padId].paidFee = true;
+            payable(admin).call{value: Fee}("");
         }
-        payable(admin).call{value: Fee}("");
         padDetails[_padId].EthWithdrawn += _ammount;
         payable(msg.sender).transfer(_ammount);
         emit EthWithdrawn(_padId, msg.sender, _ammount);
@@ -417,6 +417,8 @@ contract InfinityDaoLaunchPad {
         padDetails[_padId].preSaleEthRaised += msg.value;
         padDetails[_padId].preSaleTotalSupply -= tokenReceived;
         padDetails[_padId].presaleParticipants.push(msg.sender);
+        address token = padDetails[_padId].padToken;
+        IUSDT(token).transfer(msg.sender, tokenReceived);
         emit newPresale(_padId, msg.sender, tokenReceived);
     }
 
