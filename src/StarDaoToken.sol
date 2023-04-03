@@ -5,7 +5,9 @@ import "../lib/openzeppelin-contracts/contracts/access/Ownable.sol";
 import "../lib/openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 
 contract StarDaoToken is ERC20, Ownable {
-    constructor() ERC20("StarDaoToken", "SDT") {}
+    constructor(address to) ERC20("infinityDaoToken", "IDT") {
+        _mint(to, 300000000000000000000000);
+    }
 
     function mint(address to, uint256 amount) public onlyOwner {
         _mint(to, amount);

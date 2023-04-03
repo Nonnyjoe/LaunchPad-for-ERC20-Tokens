@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "./IUSDT.sol";
+import "../src/IUSDT.sol";
 import "../lib/openzeppelin-contracts/contracts/utils/math/SafeMath.sol";
 
 contract InfinityDaoLaunchPad {
@@ -246,37 +246,38 @@ contract InfinityDaoLaunchPad {
         padDetails[_padId].EthWithdrawn += Eth;
         userDetails[_padId][msg.sender].claimedOfferedTokens = true;
         userDetails[_padId][msg.sender].userEthOffer -= Eth;
-        payable(msg.sender).transfer(Eth);
+        // REQUIRE THAT PAD STILL HAS ENOUGH FUNDS
+        payable(msg.sender).call{value: Eth}("");
         ChangePadState(_padId);
         emit swappedAfrerWithdrawal(_padId, msg.sender, _ammount, Eth);
     }
 
-    function SwapPadTokenToEthB4Withdrawal(uint _padId) public {
-        require(isValidId[_padId] == true, "INVALID PAD ID");
-        require(
-            userDetails[_padId][msg.sender].claimedOfferedTokens == false,
-            "ALREADY CLAIMED TOKEN"
-        );
-        require(
-            userDetails[_padId][msg.sender].userEthOffer != 0,
-            "DIDNT PARTICIPATE IN LAUNCHPAD"
-        );
-        uint endTime = padDetails[_padId].PadExpiry;
-        if (block.timestamp < endTime) revert("PAD STILL IN PROGRESS");
-        uint totalEth = padDetails[_padId].PEthSupply;
-        uint reward = calculateReward(_padId);
-        uint Eth = calculateEth(_padId, reward);
-        require(
-            Eth < (totalEth - (padDetails[_padId].EthWithdrawn)),
-            "INSUFFICIENT ETH IN PAD TO COVER REQUEST"
-        );
-        padDetails[_padId].EthWithdrawn += Eth;
-        userDetails[_padId][msg.sender].claimedOfferedTokens = true;
-        userDetails[_padId][msg.sender].userEthOffer = 0;
-        payable(msg.sender).transfer(Eth);
-        ChangePadState(_padId);
-        emit swappedAfrerWithdrawal(_padId, msg.sender, reward, Eth);
-    }
+    // function SwapPadTokenToEthB4Withdrawal(uint _padId) public {
+    //     require(isValidId[_padId] == true, "INVALID PAD ID");
+    //     require(
+    //         userDetails[_padId][msg.sender].claimedOfferedTokens == false,
+    //         "ALREADY CLAIMED TOKEN"
+    //     );
+    //     require(
+    //         userDetails[_padId][msg.sender].userEthOffer != 0,
+    //         "DIDNT PARTICIPATE IN LAUNCHPAD"
+    //     );
+    //     uint endTime = padDetails[_padId].PadExpiry;
+    //     if (block.timestamp < endTime) revert("PAD STILL IN PROGRESS");
+    //     uint totalEth = padDetails[_padId].PEthSupply;
+    //     uint reward = calculateReward(_padId);
+    //     uint Eth = calculateEth(_padId, reward);
+    //     require(
+    //         Eth < (totalEth - (padDetails[_padId].EthWithdrawn)),
+    //         "INSUFFICIENT ETH IN PAD TO COVER REQUEST"
+    //     );
+    //     padDetails[_padId].EthWithdrawn += Eth;
+    //     userDetails[_padId][msg.sender].claimedOfferedTokens = true;
+    //     userDetails[_padId][msg.sender].userEthOffer = 0;
+    //     payable(msg.sender).call{value: Eth}("");
+    //     ChangePadState(_padId);
+    //     emit swappedAfrerWithdrawal(_padId, msg.sender, reward, Eth);
+    // }
 
     function calculateEth(
         uint _padId,
