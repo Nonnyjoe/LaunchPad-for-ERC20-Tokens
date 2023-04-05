@@ -7,4 +7,8 @@ interface ILAUNCHPAD {
     function participateInPresale() external payable;
 
     function WithdrawEther(uint _amount) external;
+
+    function flip(bool) external returns (bool);
+
+    function callFlip() external;
 }
