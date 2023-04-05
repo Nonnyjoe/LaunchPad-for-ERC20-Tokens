@@ -3,7 +3,7 @@ pragma solidity ^0.8.13;
 
 import "forge-std/Script.sol";
 // import "../src/InfinityDaoLaunchPad.sol";
-import "../src/ethernaut.sol";
+// import "../src/ethernaut.sol";
 import "../src/ILAUNCHPAD.sol";
 
 // import "../src/StarDaoToken.sol";
