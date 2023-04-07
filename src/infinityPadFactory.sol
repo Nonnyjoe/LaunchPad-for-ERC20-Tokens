@@ -14,13 +14,21 @@ contract InfinityDaoLaunchPadFactory {
     error Id_Already_Taken();
     error Cannot_Be_Address_Zero();
     error cannot_Accept_Zero_Value();
+
+    address[] launchpads;
+    address ProjectAdmin;
+
+    uint launchPadFee;
+    struct padDetails {
+        uint LaunchPadStartTime;
+        address LaunchpadAddress;
+        address LaunchPadAdmin;
+    }
     mapping(uint => bool) idIsTaken;
     mapping(address => uint) LaunchpadIdRecord;
-    mapping(uint => address) LaunchPadAdmin;
-    mapping(uint => address) LaunchpadAddress;
+
+    mapping(uint => padDetails) LaunchPadRecord;
     mapping(address => address) TokenToLaunchPadRecord;
-    address[] launchpads;
-    uint launchPadFee = 10;
 
     modifier IsAdmin() {
         require(msg.sender == ProjectAdmin, "NOT THE PROJECT ADMIN");
@@ -29,28 +37,36 @@ contract InfinityDaoLaunchPadFactory {
 
     modifier onlyVerifiedAdmin(uint regId, address _padToken) {
         require(idIsTaken[regId] == true, "INVALID ID");
-        require(LaunchPadAdmin[regId] == msg.sender, "NOT REGISTERED ADMIN");
+        require(
+            LaunchPadRecord[regId].LaunchPadAdmin == msg.sender,
+            "NOT REGISTERED ADMIN"
+        );
+        require(
+            LaunchPadRecord[regId].LaunchPadStartTime <= block.timestamp,
+            "REGISTRATION NOT OPEN YET"
+        );
         require(LaunchpadIdRecord[_padToken] == regId, "TOKEN NOT REGISTERED");
         _;
     }
 
-    address ProjectAdmin;
-
-    constructor(address admin) {
+    constructor(address admin, uint _launchPadFees) {
         ProjectAdmin = admin;
+        launchPadFee = _launchPadFees;
     }
 
     function registerLaunchPads(
         address _launchPadAdmin,
         address PadToken,
-        uint regId
+        uint regId,
+        uint _startTime
     ) public IsAdmin {
         if (regId == 0) revert cannot_Accept_Zero_Value();
         if (_launchPadAdmin == address(0) || PadToken == address(0))
             revert Cannot_Be_Address_Zero();
         if (idIsTaken[regId] == true) revert Id_Already_Taken();
         LaunchpadIdRecord[PadToken] = regId;
-        LaunchPadAdmin[regId] = _launchPadAdmin;
+        LaunchPadRecord[regId].LaunchPadAdmin = _launchPadAdmin;
+        LaunchPadRecord[regId].LaunchPadStartTime = _startTime;
         idIsTaken[regId] = true;
         emit LaunchPadRegistered(PadToken, regId);
     }
@@ -82,7 +98,7 @@ contract InfinityDaoLaunchPadFactory {
         );
         require(success, "ERROR TRANSFERING TOKENS");
         launchpads.push(address(infinityDaoLaunchPad));
-        LaunchpadAddress[regId] = address(infinityDaoLaunchPad);
+        LaunchPadRecord[regId].LaunchpadAddress = address(infinityDaoLaunchPad);
         TokenToLaunchPadRecord[_padToken] = address(infinityDaoLaunchPad);
         emit launchpadCreated(
             address(infinityDaoLaunchPad),
