@@ -23,6 +23,11 @@ contract InfinityDaoLaunchPad {
     event newPresale(address user, uint tokenReceived);
     event PresaleLiquidityEmptied(address admin, uint presaleTotalSupply);
 
+    /**
+     * ======================================================================== *
+     * --------------------------- ERRORS ------------------------------------- *
+     * ======================================================================== *
+     */
     error invalidTransferAmount();
     error Pad_ended_check_presale();
     error Pad_ended();
